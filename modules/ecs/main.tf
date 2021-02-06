@@ -282,6 +282,24 @@ resource "aws_ecs_service" "web" {
   }
 }
 
+data "aws_ecs_task_definition" "sidekiq" {
+  task_definition = aws_ecs_task_definition.sidekiq.family
+  depends_on = [aws_ecs_task_definition.sidekiq]
+}
+
+resource "aws_ecs_service" "sidekiq" {
+  name            = "${var.environment}-sidekiq"
+  task_definition = "${aws_ecs_task_definition.sidekiq.family}:${max(aws_ecs_task_definition.sidekiq.revision, data.aws_ecs_task_definition.sidekiq.revision)}"
+  desired_count   = 1
+  launch_type     = "FARGATE"
+  cluster =       aws_ecs_cluster.cluster.id
+  depends_on      = [aws_iam_role_policy.ecs_service_role_policy]
+
+  network_configuration {
+    security_groups = concat(var.security_groups_ids, [aws_security_group.ecs_service.id])
+    subnets         = var.subnets_ids
+  }
+}
 
 /*====
 Auto Scaling for ECS
