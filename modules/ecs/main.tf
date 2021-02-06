@@ -42,6 +42,15 @@ data "template_file" "web_task" {
   }
 }
 
+data "template_file" "flask_task" {
+  template = file("${path.module}/tasks/flask_task_definition.json")
+
+  vars = {
+    image           = "525465582669.dkr.ecr.us-east-1.amazonaws.com/flask-demo:latest"
+    log_group       = aws_cloudwatch_log_group.rails_terraform.name
+  }
+}
+
 data "template_file" "sidekiq_task" {
   template = file("${path.module}/tasks/sidekiq_task_definition.json")
 
@@ -68,6 +77,17 @@ resource "aws_ecs_task_definition" "web" {
 resource "aws_ecs_task_definition" "sidekiq" {
   family                   = "${var.environment}_sidekiq"
   container_definitions    = data.template_file.sidekiq_task.rendered
+  requires_compatibilities = ["FARGATE"]
+  network_mode             = "awsvpc"
+  cpu                      = "256"
+  memory                   = "512"
+  execution_role_arn       = aws_iam_role.ecs_execution_role.arn
+  task_role_arn            = aws_iam_role.ecs_execution_role.arn
+}
+
+resource "aws_ecs_task_definition" "flask" {
+  family                   = "${var.environment}_flask"
+  container_definitions    = data.template_file.flask_task.rendered
   requires_compatibilities = ["FARGATE"]
   network_mode             = "awsvpc"
   cpu                      = "256"
@@ -118,6 +138,18 @@ resource "aws_alb_target_group" "alb_target_group" {
   }
 }
 
+resource "aws_alb_target_group" "alb_flask" {
+  name     = "${var.environment}-alb-flask-${random_id.target_group_sufix.hex}"
+  port     = 7776
+  protocol = "HTTP"
+  vpc_id   = var.vpc_id
+  target_type = "ip"
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
 /* security group for ALB */
 resource "aws_security_group" "web_inbound_sg" {
   name        = "${var.environment}-web-inbound-sg"
@@ -127,6 +159,13 @@ resource "aws_security_group" "web_inbound_sg" {
   ingress {
     from_port   = 80
     to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    from_port   = 7776
+    to_port     = 7776
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
@@ -169,6 +208,18 @@ resource "aws_alb_listener" "rails_terraform" {
 
   default_action {
     target_group_arn = aws_alb_target_group.alb_target_group.arn
+    type             = "forward"
+  }
+}
+
+resource "aws_alb_listener" "flask" {
+  load_balancer_arn = aws_alb.alb_rails-terraform.arn
+  port              = "7776"
+  protocol          = "HTTP"
+  depends_on        = [aws_alb_target_group.alb_flask]
+
+  default_action {
+    target_group_arn = aws_alb_target_group.alb_flask.arn
     type             = "forward"
   }
 }
@@ -255,6 +306,33 @@ resource "aws_security_group" "ecs_service" {
     Environment = var.environment
   }
 }
+
+/* Flask */
+data "aws_ecs_task_definition" "flask" {
+  task_definition = aws_ecs_task_definition.flask.family
+  depends_on = [aws_ecs_task_definition.flask]
+}
+
+resource "aws_ecs_service" "flask" {
+  name            = "${var.environment}-flask"
+  task_definition = "${aws_ecs_task_definition.flask.family}:${max(aws_ecs_task_definition.flask.revision, data.aws_ecs_task_definition.flask.revision)}"
+  desired_count   = 1
+  launch_type     = "FARGATE"
+  cluster =       aws_ecs_cluster.cluster.id
+  depends_on      = [aws_iam_role_policy.ecs_service_role_policy, aws_alb_target_group.alb_flask]
+
+  network_configuration {
+    security_groups = concat(var.security_groups_ids, [aws_security_group.ecs_service.id])
+    subnets         = var.subnets_ids
+  }
+
+  load_balancer {
+    target_group_arn = aws_alb_target_group.alb_flask.arn
+    container_name   = "flask"
+    container_port   = "5000"
+  }
+}
+
 
 /* Simply specify the family to find the latest ACTIVE revision in that family */
 data "aws_ecs_task_definition" "web" {
