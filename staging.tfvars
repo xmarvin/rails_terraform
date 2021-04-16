@@ -1,4 +1,4 @@
-region                        = "us-east-1"
+region                        = "us-west-2"
 domain                        = "railsterraform.com"
 
 /* rds */
@@ -12,4 +12,4 @@ secret_key_base    = "8d412aee3ceaa494fe1c276f5f7e524b9e33f649c03690e689e5b36a0c
 rabbit_name = "Yo Yo Singh"
 environment = "study"
 
-availability_zones = ["us-east-1a", "us-east-1b"]
+availability_zones = ["us-west-2a", "us-west-2b"]

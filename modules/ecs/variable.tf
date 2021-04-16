@@ -2,6 +2,10 @@ variable "environment" {
   description = "The environment"
 }
 
+variable "region" {
+  description = "aws region"
+}
+
 variable "vpc_id" {
   description = "The VPC id"
 }

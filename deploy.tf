@@ -59,5 +59,6 @@ module "ecs" {
   database_password = var.database_password
   secret_key_base   = var.secret_key_base
   redis_url         =  module.redis.url
+  region            = var.region
 }
 

@@ -38,6 +38,7 @@ data "template_file" "web_task" {
     secret_key_base = var.secret_key_base
     database_url    = "postgresql://${var.database_username}:${var.database_password}@${var.database_endpoint}:5432/${var.database_name}?encoding=utf8&pool=40"
     redis_url       = var.redis_url
+    region          = var.region
     log_group       = aws_cloudwatch_log_group.rails_terraform.name
   }
 }
@@ -49,6 +50,7 @@ data "template_file" "sidekiq_task" {
     image           = aws_ecr_repository.rails_terraform_app.repository_url
     secret_key_base = var.secret_key_base
     database_url    = "postgresql://${var.database_username}:${var.database_password}@${var.database_endpoint}:5432/${var.database_name}?encoding=utf8&pool=40"
+    region          = var.region
     redis_url       = var.redis_url
     log_group       = aws_cloudwatch_log_group.rails_terraform.name
   }
@@ -84,6 +86,7 @@ data "template_file" "db_migrate_task" {
     image           = aws_ecr_repository.rails_terraform_app.repository_url
     secret_key_base = var.secret_key_base
     database_url    = "postgresql://${var.database_username}:${var.database_password}@${var.database_endpoint}:5432/${var.database_name}?encoding=utf8&pool=40"
+    region          = var.region
     log_group       = "rails_terraform"
   }
 }
