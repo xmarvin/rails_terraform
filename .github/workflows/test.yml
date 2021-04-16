@@ -1,8 +1,33 @@
 name: Tests
 on: [push]
 jobs:
+  build:
+    runs-on: ubuntu-20.04
+    steps:
+    - name: Check out code
+      uses: actions/checkout@v2
+    - name: Inject slug/short variables
+      uses: rlespinasse/github-slug-action@v3.x
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: us-west-2
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v1
+    - name: Build, tag, and push image to Amazon ECR
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        ECR_REPOSITORY: rails_terraform/production
+        IMAGE_TAG: latest
+      run: |
+        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
   deploy:
     runs-on: ubuntu-20.04
+    needs: [build]
     steps:
       - name: Check out code
         uses: actions/checkout@v2
@@ -17,6 +42,9 @@ jobs:
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
+      - name: Generate task definition
+        run: |
+          aws ecs describe-task-definition --task-definition study_web --query taskDefinition --region us-west-2 > task-definition.json
       - name: Fill in the new image ID in the Amazon ECS task definition
         id: task-def
         uses: aws-actions/amazon-ecs-render-task-definition@v1
@@ -32,3 +60,60 @@ jobs:
           service: study-web
           cluster: study-ecs-cluster
           wait-for-service-stability: true
+  test:
+    needs: [build]
+    runs-on: ubuntu-20.04
+    services:
+      postgres:
+        image: postgres:10
+        # The postgres container requires the postgres user to be setup with a password in order to start it due to security
+        # reasons
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install Ruby
+        uses: ruby/setup-ruby@473e4d8fe5dd94ee328fdfca9f8c9c7afc9dae5e
+        with:
+          ruby-version: 2.6.6
+      - name: Install Bundler
+        run: gem install bundler:2.1.4
+      - name: Install Node
+        uses: actions/setup-node@v1
+        with:
+          node-version: 14.2.0
+      - uses: actions/cache@v2
+        with:
+          path: vendor/bundle
+          key: ${{ runner.os }}-gems-${{ hashFiles('**/Gemfile.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-gems-
+      - name: Get yarn cache directory path
+        id: yarn-cache-dir-path
+        run: echo "::set-output name=dir::$(yarn config get cacheFolder)"
+      - uses: actions/cache@v2
+        id: yarn-cache # use this to check for `cache-hit` (`steps.yarn-cache.outputs.cache-hit != 'true'`)
+        with:
+          path: ${{ steps.yarn-cache-dir-path.outputs.dir }}
+          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-yarn-
+      - name: Setup the Rails application
+        env:
+          RAILS_ENV: test
+        run: |
+          sudo apt-get -yqq install libpq-dev
+          bundle config path vendor/bundle
+          bundle install --no-deployment --jobs 4 --retry 3
+          cp config/database.github.yml config/database.yml
+          bundle exec rails db:create
+          bundle exec rails db:migrate
+          yarn --frozen-lockfile
+      - name: Run unit tests
+        run: bundle exec rake
