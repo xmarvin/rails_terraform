@@ -33,4 +33,5 @@
 /yarn-error.log
 yarn-debug.log*
 .yarn-integrity
-.terraform/*
+.terraform/*.terraform/
+terraform/.terraform/

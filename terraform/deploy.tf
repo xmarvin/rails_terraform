@@ -49,7 +49,7 @@ module "ecs" {
   environment        = var.environment
   vpc_id             = module.networking.vpc_id
   availability_zones = local.availability_zones
-  repository_name    = "rails_terraform/production"
+  repository_name    = "rails_terraform/${var.environment}"
   subnets_ids        = module.networking.private_subnets_id
   public_subnet_ids  = module.networking.public_subnets_id
   security_groups_ids = concat([module.rds.db_access_sg_id], module.networking.security_groups_ids)

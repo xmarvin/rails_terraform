@@ -164,6 +164,14 @@ resource "aws_alb" "alb_rails-terraform" {
   }
 }
 
+resource "aws_route53_record" "www" {
+  zone_id = "Z030235342R3U6AYURSZ"
+  name    = "${var.environment}.akisel.ml"
+  type    = "CNAME"
+  ttl     = "300"
+  records = [aws_alb.alb_rails-terraform.dns_name]
+}
+
 resource "aws_alb_listener" "rails_terraform" {
   load_balancer_arn = aws_alb.alb_rails-terraform.arn
   port              = "80"

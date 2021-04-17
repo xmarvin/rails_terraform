@@ -20,10 +20,10 @@ jobs:
     - name: Build, tag, and push image to Amazon ECR
       env:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-        ECR_REPOSITORY: rails_terraform/production
+        ECR_REPOSITORY: rails_terraform/${{ env.GITHUB_REF_SLUG }}
         IMAGE_TAG: latest
       run: |
-        docker build --build-arg RABBIT_NAME=${{ secrets.RABBIT_NAME }} -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
         docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
   deploy:
     runs-on: ubuntu-20.04
@@ -43,22 +43,24 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
       - name: Generate task definition
+        env:
+          TASK_DEFINITION: ${{ env.GITHUB_REF_SLUG }}_web
         run: |
-          aws ecs describe-task-definition --task-definition study_web --query taskDefinition --region us-west-2 > task-definition.json
+          aws ecs describe-task-definition --task-definition $TASK_DEFINITION --query taskDefinition --region us-west-2 > task-definition.json
       - name: Fill in the new image ID in the Amazon ECS task definition
         id: task-def
         uses: aws-actions/amazon-ecs-render-task-definition@v1
         with:
           task-definition: task-definition.json
           container-name: web
-          image: 525465582669.dkr.ecr.us-west-2.amazonaws.com/rails_terraform/production:latest
+          image: 525465582669.dkr.ecr.us-west-2.amazonaws.com/rails_terraform/${{ env.GITHUB_REF_SLUG }}:latest
 
       - name: Deploy Amazon ECS task definition
         uses: aws-actions/amazon-ecs-deploy-task-definition@v1
         with:
           task-definition: ${{ steps.task-def.outputs.task-definition }}
-          service: study-web
-          cluster: study-ecs-cluster
+          service: ${{ env.GITHUB_REF_SLUG }}-web
+          cluster: ${{ env.GITHUB_REF_SLUG }}-ecs-cluster
           wait-for-service-stability: true
   test:
     needs: [build]
