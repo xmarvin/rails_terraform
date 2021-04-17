@@ -115,7 +115,7 @@ resource "aws_alb_target_group" "alb_target_group" {
   protocol = "HTTP"
   vpc_id   = var.vpc_id
   target_type = "ip"
-
+  deregistration_delay = 10
   lifecycle {
     create_before_destroy = true
   }
