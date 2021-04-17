@@ -10,7 +10,7 @@ provider "aws" {
 }
 
 resource "aws_key_pair" "key" {
-  key_name   = "production_key"
+  key_name   = "${var.environment}_production_key"
   public_key = file("terraform_rsa.pub")
 }
 
