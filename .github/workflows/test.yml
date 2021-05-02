@@ -1,7 +1,11 @@
 name: Tests
-on: [push]
+on:
+  release:
+    types: [created]
+  workflow_dispatch:
 jobs:
   build:
+    needs: [test]
     runs-on: ubuntu-20.04
     steps:
     - name: Check out code
@@ -29,56 +33,15 @@ jobs:
     runs-on: ubuntu-20.04
     needs: [build]
     steps:
-      - name: Check out code
-        uses: actions/checkout@v2
-      - name: Inject slug/short variables
-        uses: rlespinasse/github-slug-action@v3.x
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v1
+      - name: Trigger AWS CodePipeline
+        uses: zulhfreelancer/aws-codepipeline-action@v1.0.7
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-west-2
-      - name: Login to Amazon ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v1
-      - name: Generate task definition
-        env:
-          WEB_TASK_DEFINITION: ${{ env.GITHUB_REF_SLUG }}_web
-          SIDEKIQ_TASK_DEFINITION: ${{ env.GITHUB_REF_SLUG }}_sidekiq
-        run: |
-          aws ecs describe-task-definition --task-definition $WEB_TASK_DEFINITION --query taskDefinition --region us-west-2 > web-task-definition.json
-          aws ecs describe-task-definition --task-definition $SIDEKIQ_TASK_DEFINITION --query taskDefinition --region us-west-2 > sidekiq-task-definition.json
-      - name: Fill in the new image ID in the Amazon ECS web task definition
-        id: web-task-def
-        uses: aws-actions/amazon-ecs-render-task-definition@v1
-        with:
-          task-definition: web-task-definition.json
-          container-name: web
-          image: 525465582669.dkr.ecr.us-west-2.amazonaws.com/rails_terraform/${{ env.GITHUB_REF_SLUG }}:latest
-      - name: Fill in the new image ID in the Amazon ECS sidekiq task definition
-        id: sidekiq-task-def
-        uses: aws-actions/amazon-ecs-render-task-definition@v1
-        with:
-          task-definition: sidekiq-task-definition.json
-          container-name: sidekiq
-          image: 525465582669.dkr.ecr.us-west-2.amazonaws.com/rails_terraform/${{ env.GITHUB_REF_SLUG }}:latest
-      - name: Deploy Amazon ECS web task definition
-        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
-        with:
-          task-definition: ${{ steps.web-task-def.outputs.task-definition }}
-          service: ${{ env.GITHUB_REF_SLUG }}-web
-          cluster: ${{ env.GITHUB_REF_SLUG }}-ecs-cluster
-          wait-for-service-stability: true
-      - name: Deploy Amazon ECS sidekiq task definition
-        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
-        with:
-          task-definition: ${{ steps.sidekiq-task-def.outputs.task-definition }}
-          service: ${{ env.GITHUB_REF_SLUG }}-sidekiq
-          cluster: ${{ env.GITHUB_REF_SLUG }}-ecs-cluster
-          wait-for-service-stability: true
+          aws-region: "us-west-2"
+          aws-access-key: ${{ secrets.AWS_PIPELINE_ACCESS_KEY }}
+          aws-secret-key: ${{ secrets.AWS_PIPELINE_SECRET_KEY }}
+          pipeline-name: "your-pipeline-name"
+
   test:
-    needs: [build]
     runs-on: ubuntu-20.04
     services:
       postgres:

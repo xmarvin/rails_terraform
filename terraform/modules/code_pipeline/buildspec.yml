@@ -1,0 +1,17 @@
+version: 0.2
+
+phases:
+  pre_build:
+    commands:
+      - echo Entered the pre_build phase...
+  build:
+    commands:
+      - echo Build started on `date`
+  post_build:
+    commands:
+      - echo Writing image definitions file...
+      - printf '[{"name":"web","imageUri":"%s"}]' $REPOSITORY_URI:latest > imagedefinitions.json
+      - echo upgrading db-migrate task definitions
+      - aws ecs run-task --launch-type FARGATE --cluster ${cluster_name} --task-definition ${environment}_db_migrate --network-configuration "awsvpcConfiguration={subnets=[${subnet_id}],securityGroups=[${security_group_ids}]}"
+artifacts:
+  files: imagedefinitions.json

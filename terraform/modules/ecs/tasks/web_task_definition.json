@@ -46,6 +46,10 @@
       {
         "name": "RAILS_SERVE_STATIC_FILES",
         "value": "true"
+      },
+      {
+        "name": "RABBIT_NAME",
+        "value": "Ben"
       }
     ]
   }
