@@ -105,7 +105,7 @@ resource "aws_codepipeline" "pipeline" {
       version          = "1"
       output_artifacts = ["source"]
       configuration = {
-        RepositoryName = var.repository_url
+        RepositoryName = var.repository_name
         ImageTag       = "latest"
       }
     }

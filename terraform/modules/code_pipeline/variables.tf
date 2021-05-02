@@ -2,6 +2,10 @@ variable "repository_url" {
   description = "The url of the ECR repository"
 }
 
+variable "repository_name" {
+  description = "repository name"
+}
+
 variable "region" {
   description = "The region to use"
 }
