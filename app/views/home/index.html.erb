@@ -1,10 +1,10 @@
 <p>
-	Hi, Rails app is running successfully <br>
+  Hi, Rails app is running successfully. <i>feature</i> branch<br>
 	CUSTOM ENV VARIABLE: <%= ENV["RABBIT_NAME"] %>
 	<br>
 	AWS Infrastructure for this app is spin using terraform, docker and Github actions....<br><br>
 
-	We are on feature branch
+  We are on <b>feature</b>> branch
 
 </p>
-<%= link_to "Notes", notes_path %>
+<%= link_to "Notes (#{Note.count})", notes_path %>
