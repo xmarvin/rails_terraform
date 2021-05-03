@@ -46,11 +46,14 @@
       {
         "name": "RAILS_SERVE_STATIC_FILES",
         "value": "true"
-      },
-      {
-        "name": "RABBIT_NAME",
-        "value": "Ben"
       }
+    ],
+
+    "environmentFiles": [
+        {
+          "value": "arn:aws:s3:::alki-backup/envs/master.env",
+          "type": "s3"
+        }
     ]
   }
 ]
