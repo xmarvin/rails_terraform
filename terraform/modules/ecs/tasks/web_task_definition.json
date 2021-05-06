@@ -48,12 +48,11 @@
         "value": "true"
       }
     ],
-
-    "environmentFiles": [
-        {
-          "value": "arn:aws:s3:::alki-backup/envs/master.env",
-          "type": "s3"
-        }
+    "secrets": [
+      {
+        "name": "RABBIT_NAME",
+        "valueFrom": "arn:aws:ssm:${region}:525465582669:parameter/rails-terraform/${environment}/rabbit_name"
+      }
     ]
   }
 ]

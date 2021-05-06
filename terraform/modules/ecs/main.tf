@@ -39,6 +39,7 @@ data "template_file" "web_task" {
     database_url    = "postgresql://${var.database_username}:${var.database_password}@${var.database_endpoint}:5432/${var.database_name}?encoding=utf8&pool=40"
     redis_url       = var.redis_url
     region          = var.region
+    environment     = var.environment
     log_group       = aws_cloudwatch_log_group.rails_terraform.name
   }
 }
