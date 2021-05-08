@@ -136,6 +136,13 @@ resource "aws_security_group" "web_inbound_sg" {
   }
 
   ingress {
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
     from_port   = 8
     to_port     = 0
     protocol    = "icmp"
@@ -178,6 +185,25 @@ resource "aws_alb_listener" "rails_terraform" {
   port              = "80"
   protocol          = "HTTP"
   depends_on        = [aws_alb_target_group.alb_target_group]
+
+  default_action {
+    type = "redirect"
+    redirect {
+      port        = "443"
+      protocol    = "HTTPS"
+      status_code = "HTTP_301"
+    }
+  }
+}
+
+resource "aws_alb_listener" "rails_terraform_ssl" {
+  load_balancer_arn = aws_alb.alb_rails-terraform.arn
+  port              = "443"
+  protocol          = "HTTPS"
+  depends_on        = [aws_alb_target_group.alb_target_group]
+
+  ssl_policy        = "ELBSecurityPolicy-2016-08"
+  certificate_arn   = "arn:aws:acm:us-west-2:525465582669:certificate/b9b80e8f-6504-4046-b04c-c057e491ce7b"
 
   default_action {
     target_group_arn = aws_alb_target_group.alb_target_group.arn
