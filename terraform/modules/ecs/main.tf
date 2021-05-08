@@ -396,3 +396,74 @@ resource "aws_cloudwatch_metric_alarm" "service_cpu_high" {
   ok_actions    = [aws_appautoscaling_policy.down.arn]
 }
 
+/*====
+Auto Scaling for Sidekiq
+======*/
+resource "aws_appautoscaling_target" "sidekiq_target" {
+  service_namespace  = "ecs"
+  resource_id        = "service/${aws_ecs_cluster.cluster.name}/${aws_ecs_service.sidekiq.name}"
+  scalable_dimension = "ecs:service:DesiredCount"
+  role_arn           =  aws_iam_role.ecs_autoscale_role.arn
+  min_capacity       = 1
+  max_capacity       = 4
+}
+
+resource "aws_appautoscaling_policy" "sidekiq_up" {
+  name                    = "${var.environment}_sidekiq_scale_up"
+  service_namespace       = "ecs"
+  resource_id             = "service/${aws_ecs_cluster.cluster.name}/${aws_ecs_service.sidekiq.name}"
+  scalable_dimension      = "ecs:service:DesiredCount"
+
+
+  step_scaling_policy_configuration {
+    adjustment_type         = "ChangeInCapacity"
+    cooldown                = 60
+    metric_aggregation_type = "Maximum"
+
+    step_adjustment {
+      metric_interval_lower_bound = 0
+      scaling_adjustment = 1
+    }
+  }
+
+  depends_on = [aws_appautoscaling_target.sidekiq_target]
+}
+
+resource "aws_appautoscaling_policy" "sidekiq_down" {
+  name                    = "${var.environment}_sidekiq_scale_down"
+  service_namespace       = "ecs"
+  resource_id             = "service/${aws_ecs_cluster.cluster.name}/${aws_ecs_service.sidekiq.name}"
+  scalable_dimension      = "ecs:service:DesiredCount"
+
+  step_scaling_policy_configuration {
+    adjustment_type         = "ChangeInCapacity"
+    cooldown                = 60
+    metric_aggregation_type = "Maximum"
+
+    step_adjustment {
+      metric_interval_upper_bound = 0
+      scaling_adjustment = -1
+    }
+  }
+
+  depends_on = [aws_appautoscaling_target.sidekiq_target]
+}
+
+/* metric used for auto scale */
+resource "aws_cloudwatch_metric_alarm" "queue_size_high" {
+  alarm_name          = "${var.environment}_rails_terraform_queue_size_high"
+  comparison_operator = "GreaterThanOrEqualToThreshold"
+  evaluation_periods  = "1"
+  metric_name         = "count"
+  namespace           = "Sidekiq"
+  period              = "60"
+  statistic           = "Average"
+  threshold           = "50"
+
+  dimensions = {
+    env = var.environment
+  }
+
+  alarm_actions = [aws_appautoscaling_policy.sidekiq_up.arn]
+  ok_actions    = [aws_appautoscaling_policy.sidekiq_down.arn]
+}
