@@ -37,3 +37,8 @@ variable "environment" {
 variable "availability_zones" {
 	type = list
 }
+
+variable "app_name" {
+  description = "Web app name"
+  default = "rails_terraform"
+}

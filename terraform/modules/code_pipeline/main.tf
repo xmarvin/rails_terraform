@@ -62,7 +62,7 @@ data "template_file" "buildspec" {
 
 
 resource "aws_codebuild_project" "rails_terraform_build" {
-  name          = "${var.environment}-rails_terraform-codebuild"
+  name          = "${var.environment}-${var.app_name}-codebuild"
   build_timeout = "10"
   service_role  = aws_iam_role.codebuild_role.arn
 
@@ -73,7 +73,7 @@ resource "aws_codebuild_project" "rails_terraform_build" {
   environment {
     compute_type    = "BUILD_GENERAL1_SMALL"
     // https://docs.aws.amazon.com/codebuild/latest/userguide/build-env-ref-available.html
-    image           = "aws/codebuild/docker:1.12.1"
+    image           = "aws/codebuild/standard:1.0"
     type            = "LINUX_CONTAINER"
     privileged_mode = true
   }
@@ -87,7 +87,7 @@ resource "aws_codebuild_project" "rails_terraform_build" {
 /* CodePipeline */
 
 resource "aws_codepipeline" "pipeline" {
-  name     = "${var.environment}-rails_terraform-pipeline"
+  name     = "${var.environment}-${var.app_name}-pipeline"
   role_arn = aws_iam_role.codepipeline_role.arn
 
   artifact_store {
@@ -124,7 +124,7 @@ resource "aws_codepipeline" "pipeline" {
       output_artifacts = ["imagedefinitions"]
 
       configuration = {
-        ProjectName = "${var.environment}-rails_terraform-codebuild"
+        ProjectName = "${var.environment}-${var.app_name}-codebuild"
       }
     }
   }

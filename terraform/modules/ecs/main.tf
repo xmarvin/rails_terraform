@@ -3,11 +3,11 @@
 Cloudwatch Log Group
 ======*/
 resource "aws_cloudwatch_log_group" "rails_terraform" {
-  name = "${var.environment}-rails_terraform"
+  name = "${var.environment}-${var.app_name}"
 
   tags = {
     Environment = var.environment
-    Application = "rails_terraform"
+    Application = var.app_name
   }
 }
 

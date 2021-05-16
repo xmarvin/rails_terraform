@@ -51,7 +51,11 @@ variable "database_name" {
 }
 
 variable "repository_name" {
-  description = "The name of the repisitory"
+  description = "The name of the repository"
+}
+
+variable "app_name" {
+  description = "Web app name"
 }
 
 variable "secret_key_base" {
